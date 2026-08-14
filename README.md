@@ -1,2 +1,2 @@
 # TTS
-its about a basic text to speech project
+its about a basic text to speech project.it has features like voice control,words per minute ,volume control, for user interface it uses streamlit so it can run on browser easily there are many voices thanks to edge tts module but there are too many so we have just choosen first 10 voices.y building it you can learn things like edge tts ,user interface and basic idea of how to make a user interface 
