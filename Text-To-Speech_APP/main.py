@@ -1,56 +1,61 @@
-import pyttsx3
 import streamlit as st
+import edge_tts
+import asyncio
 
 st.title('Text-To-Speech App')
-
-engine=pyttsx3.init()
-
-voices=engine.getProperty('voices')
-voice_names= [voice.name for voice in voices]
-
-
-volume=engine.getProperty('volume')
-
-rate=engine.getProperty('rate')
-
-
-mode=st.radio('choose a option',['type/paste Text','upload a file'])
-
-all_text=None
-
-if mode=='type/paste Text':
-    text=st.text_area('please type here')
-    if text:
-        all_text=text
-elif mode=='upload a file':
-    file=st.file_uploader('please upload the file')
-    if file is not None:
-        file_text=file.read().decode('utf-8')
-        st.write('file contents :')
-        st.text(file_text)
-        all_text=file_text
-else:
-    pass
-
-
-    
-
+voices= asyncio.run(edge_tts.list_voices())[:10]
+voice_names= [voice['ShortName'] +' (' + voice['Locale'] +')' for voice in voices]
 
 selected_voice=st.sidebar.selectbox('Choose a voice:', voice_names)
 
-voice_obj=voices[voice_names.index(selected_voice)]
+mode=st.radio('Choose a mode from below',options=['type/paste text','upload file(.txt)'])
 
-engine.setProperty('voice', voice_obj.id)
+all_text=None
+if mode=='type/paste text':
+    text=st.text_area('Paste or Type here')
+    all_text=text
+elif mode=='upload file(.txt)':
+    file=st.file_uploader('Upload your file below',type=['txt'])
+    if file is not None:
+        file_text=file.read().decode('utf-8')
+        st.write(f'File contents: {file_text}')
+        all_text=file_text
+volume=st.slider('Volume (%):',0,100,70)
+rate=st.slider('Words Per Minute(WPM)/rate(%):',min_value=-50,max_value=50,value=0)
 
-volume_st=st.slider('Volume: ',0.0,1.0,0.7,0.05)
-engine.setProperty('volume',volume_st)
+communicate=None
+
+rate_tts=None
+if rate == 0:
+    rate_tts='+0%'
+elif rate > 0:
+    rate_tts=f'+{rate}%'
+elif rate < 0:
+    rate_tts=f'-{rate}%'
+
+volume_tts=None
+
+if volume > 0:
+    volume_tts=f'+{volume}%'
+elif volume == 0:
+    volume_tts='+0%'
+else:
+    volume_tts=f'{volume}%'
 
 
-rate_st=st.sidebar.slider('Words Per Minute :',10,1000,200,10)
-engine.setProperty('rate',rate_st)
 
-if all_text and st.button('read'):
-    engine.save_to_file(all_text, "output.wav")
-    engine.runAndWait()
-    st.audio("output.wav")
+
+if all_text and st.button('Read'):
+    ShortName=selected_voice.split(' ')[0]
+
+    communicate=edge_tts.Communicate(
+        text=all_text,
+        voice=ShortName,
+        rate=rate_tts,
+        volume=volume_tts
+
+    )
+if communicate:
+    asyncio.run(communicate.save("output.mp3"))
+    st.audio('output.mp3')
 
